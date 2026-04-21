@@ -35,6 +35,7 @@ The cleartext `WebView` load is the primary demonstrated vulnerability. The SSL-
 
 - `findings/report.tex`: USENIX-format Part A report source.
 - `findings/report.pdf`: compiled Part A report.
+- `findings/mitigation/`: example patched files showing how to disable cleartext traffic and reject TLS failures.
 - `ai-log/ai-log.txt`: concise AI usage log and rubric-driven mock Q&A notes.
 - `decompiled/` and `apktool-out/`: JADX and APKTool outputs used as evidence.
 

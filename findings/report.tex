@@ -74,7 +74,7 @@ The mitigation should address both transport and validation:
 \item Remove permissive hostname or certificate-validation logic such as always-true verifiers.
 \end{enumerate}
 
-These changes eliminate the confirmed cleartext channel and restore normal certificate checks, which prevents an on-path attacker from silently reading or modifying app content.
+Example remediation files were added to the repository to make the fix concrete: \texttt{findings/mitigation/MainActivity.java}, \texttt{findings/mitigation/network\_security\_config.xml}, and \texttt{findings/mitigation/AndroidManifest-snippet.xml}. These changes eliminate the confirmed cleartext channel and restore normal certificate checks, which prevents an on-path attacker from silently reading or modifying app content.
 
 \section{Conclusion}
 The intended Part A vulnerability is present and well supported by code and config evidence. The APK explicitly allows cleartext transport, loads a cleartext URL in a \texttt{WebView}, and contains permissive TLS error handling. Together these decisions make MITM-style content interception and tampering realistic on untrusted networks. The appropriate fix is to enforce HTTPS-only transport and reject TLS failures rather than bypassing them.
