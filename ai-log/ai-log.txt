@@ -1,0 +1,56 @@
+AI Usage Log for INFO5995 Assignment 2 Part A
+=============================================
+
+Scope of AI Assistance
+----------------------
+1. Workflow setup
+   - Confirmed Part A scope from the local assignment specification and rubric.
+   - Reused the Assignment 1 repository structure where it remained useful.
+   - Used `jadx`, `apktool`, `aapt`, `unzip`, and local PDF extraction tooling.
+
+2. Static analysis support
+   - Identified the app package and launch activity.
+   - Reviewed manifest transport settings and the main network-facing code path.
+   - Cross-checked Java decompilation with smali for the key security-relevant methods.
+
+3. Evidence consolidation
+   - Mapped the intended Part A issue to exact code/config locations.
+   - Drafted a concise USENIX-format report within the 2-page limit.
+
+Evidence Collected
+------------------
+- `decompiled/resources/AndroidManifest.xml`
+  - `android:usesCleartextTraffic="true"` is enabled in the application tag.
+- `decompiled/sources/com/example/mastg_test0019/MainActivity.java`
+  - The app creates a `WebView`.
+  - It overrides `onReceivedSslError(...)` and calls `proceed()`.
+  - It loads `http://www.example.com`.
+- `apktool-out/smali/com/example/mastg_test0019/MainActivity$1.smali`
+  - Confirms the SSL error handler directly calls `proceed()`.
+- `apktool-out/smali/com/example/mastg_test0019/MainActivity$2.smali`
+  - Confirms a `HostnameVerifier` implementation returns `true`.
+
+Rubric-Driven Mock Q&A
+----------------------
+Q: What is the system and threat model?
+A: The app embeds a `WebView` that fetches remote web content over the network. The relevant attacker is an on-path adversary on the same Wi-Fi, hotspot, proxy path, or other network segment who can observe or alter traffic between the app and the remote site.
+
+Q: What is the exact intended Part A vulnerability?
+A: The demonstrated issue is insecure transport handling. The manifest permits cleartext traffic, and the app actively loads an `http://` URL. In addition, the `WebViewClient` suppresses TLS certificate errors by calling `proceed()`.
+
+Q: Why is this a MITM problem?
+A: With cleartext HTTP, an on-path attacker can read and modify the response directly. If the app were moved to HTTPS content, the SSL-error bypass would still allow a MITM using an invalid certificate to inject or replace content.
+
+Q: What is the realistic impact?
+A: The attacker can tamper with content rendered inside the app, inject misleading or malicious material, monitor user-visible traffic, and potentially steal data entered into or displayed by insecure web content.
+
+Q: What is the concrete mitigation?
+A: Remove cleartext transport, load only `https://` endpoints, reject SSL errors instead of proceeding, and avoid permissive hostname/certificate validation. A restrictive Network Security Configuration can enforce this at the platform level.
+
+References Used
+---------------
+- Local assignment specification: `assignment2-spec-2.pdf`
+- Local assignment rubric: `assignment2-rubric-2.pdf`
+- JADX: `jadx`
+- APKTool: `apktool`
+- Android APK metadata: `aapt`

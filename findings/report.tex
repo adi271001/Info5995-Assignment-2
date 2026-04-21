@@ -1,0 +1,100 @@
+\documentclass[letterpaper,twocolumn,10pt]{article}
+\usepackage{../usenix2019_v3}
+\usepackage{microtype}
+\usepackage{listings}
+\microtypecontext{spacing=nonfrench}
+
+\lstset{
+  basicstyle=\ttfamily\scriptsize,
+  breaklines=true,
+  breakatwhitespace=true,
+  frame=single,
+  columns=fullflexible,
+  keepspaces=true
+}
+
+\begin{document}
+\date{}
+\title{\Large \bf AI-Assisted Network Security Review of an Android APK: Cleartext WebView Traffic and Unsafe TLS Handling}
+\author{{\rm Group Submission}\\INFO5995 Assignment 2 Part A}
+\maketitle
+
+\begin{abstract}
+We reviewed the provided Android APK \texttt{a2\_case1.apk} using static analysis with JADX and APKTool, following the Assignment 2 Part A requirement to focus on insecure transport and TLS configuration. The APK explicitly permits cleartext traffic, loads an \texttt{http://} URL inside a \texttt{WebView}, and overrides SSL-error handling to proceed despite certificate validation failures. These behaviors allow an on-path attacker to observe or modify content delivered to the app and therefore support a man-in-the-middle attack model.
+\end{abstract}
+
+\section{Introduction}
+Assignment 2 Part A is scoped to the intended network vulnerability class: insecure transport or TLS handling that enables MITM attacks. We therefore focused on manifest-level transport settings, network request locations, and certificate-validation logic rather than broader local-storage or component issues. Evidence was confirmed in both JADX Java output and APKTool resources/smali.
+
+\section{System and Threat Model}
+The APK (\texttt{com.example.mastg\_test0019}) contains a single visible activity, \texttt{MainActivity}, with a \texttt{WebView} embedded in the UI. The app appears to be a teaching sample about network security and displays explanatory text while loading remote web content.
+
+The relevant assets are the integrity and confidentiality of content fetched into the app. The attacker is an on-path adversary positioned on the same Wi-Fi network, captive portal, hotspot, or upstream proxy path. That attacker can observe, block, or modify traffic if the app uses cleartext HTTP or fails to enforce proper TLS validation. The key trust boundary is therefore between the Android app and the remote web server across an untrusted network.
+
+\section{Finding: Insecure Transport and TLS Handling}
+\textbf{Severity: High.}
+The shipped APK contains three security-relevant transport weaknesses:
+
+\begin{enumerate}
+\item The manifest enables cleartext traffic with \texttt{android:usesCleartextTraffic="true"}.
+\item \texttt{MainActivity} actively loads \texttt{http://www.example.com} into a \texttt{WebView}.
+\item The \texttt{WebViewClient} overrides \texttt{onReceivedSslError(...)} and calls \texttt{proceed()}, which suppresses certificate warnings instead of rejecting the connection.
+\end{enumerate}
+
+\begin{lstlisting}[language=Java,caption={Key decompiled network behavior in MainActivity.}]
+webView.setWebViewClient(new WebViewClient() {
+    @Override
+    public void onReceivedSslError(
+            WebView view,
+            SslErrorHandler handler,
+            SslError error) {
+        handler.proceed();
+    }
+});
+webView.loadUrl("http://www.example.com");
+\end{lstlisting}
+
+\begin{lstlisting}[language=XML,caption={Manifest permits cleartext traffic.}]
+<application
+    android:allowBackup="false"
+    android:usesCleartextTraffic="true">
+\end{lstlisting}
+
+Static analysis also found a \texttt{HostnameVerifier} implementation that always returns \texttt{true}. In the observed code path it is instantiated but not attached to an active HTTPS client, so we do not treat it as the primary exploitation path. However, it is additional evidence that TLS validation is being handled unsafely.
+
+\textbf{Impact.} The demonstrated exploit path is cleartext HTTP in the \texttt{WebView}. An on-path attacker can read the response and replace it with attacker-controlled content before it reaches the app. This can support misinformation, malicious content injection, phishing-style prompts inside the app, or data capture if sensitive information is later displayed or submitted through the web content. The SSL-error bypass worsens the design because even if the endpoint were later changed to HTTPS, invalid certificates would still be accepted by the \texttt{WebViewClient}, preserving MITM risk.
+
+\section{Mitigation}
+The mitigation should address both transport and validation:
+
+\begin{enumerate}
+\item Remove cleartext traffic by setting \texttt{android:usesCleartextTraffic="false"} and, ideally, enforcing the same policy via a restrictive Network Security Configuration.
+\item Replace \texttt{http://} URLs with authenticated \texttt{https://} endpoints.
+\item In \texttt{onReceivedSslError(...)}, cancel the request instead of calling \texttt{proceed()}.
+\item Remove permissive hostname or certificate-validation logic such as always-true verifiers.
+\end{enumerate}
+
+These changes eliminate the confirmed cleartext channel and restore normal certificate checks, which prevents an on-path attacker from silently reading or modifying app content.
+
+\section{Conclusion}
+The intended Part A vulnerability is present and well supported by code and config evidence. The APK explicitly allows cleartext transport, loads a cleartext URL in a \texttt{WebView}, and contains permissive TLS error handling. Together these decisions make MITM-style content interception and tampering realistic on untrusted networks. The appropriate fix is to enforce HTTPS-only transport and reject TLS failures rather than bypassing them.
+
+\begin{thebibliography}{10}
+\small
+\bibitem{jadx}
+Skylot. \textit{jadx}. \url{https://github.com/skylot/jadx}
+
+\bibitem{apktool}
+iBotPeaches. \textit{Apktool}. \url{https://apktool.org/}
+
+\bibitem{cleartext}
+Android Developers. \textit{Network security configuration and cleartext traffic}. \url{https://developer.android.com/privacy-and-security/security-config}
+
+\bibitem{sslerror}
+Android Developers. \textit{WebViewClient.onReceivedSslError}. \url{https://developer.android.com/reference/android/webkit/WebViewClient#onReceivedSslError(android.webkit.WebView,android.webkit.SslErrorHandler,android.net.http.SslError)}
+
+\bibitem{mitm}
+OWASP. \textit{Mobile Application Security Verification Standard (MASVS)}. \url{https://mas.owasp.org/MASVS/}
+\end{thebibliography}
+
+\end{document}
