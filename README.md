@@ -38,10 +38,4 @@ The cleartext `WebView` load is the primary demonstrated vulnerability. The SSL-
 - `ai-log/ai-log.txt`: concise AI usage log and rubric-driven mock Q&A notes.
 - `decompiled/` and `apktool-out/`: JADX and APKTool outputs used as evidence.
 
-## Build The Report
 
-```bash
-cd findings
-pdflatex report.tex
-pdflatex report.tex
-```
