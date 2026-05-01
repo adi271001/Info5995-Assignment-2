@@ -39,4 +39,9 @@ The cleartext `WebView` load is the primary demonstrated vulnerability. The SSL-
 - `ai-log/ai-log.txt`: concise AI usage log and rubric-driven mock Q&A notes.
 - `decompiled/` and `apktool-out/`: JADX and APKTool outputs used as evidence.
 
+## Part B Coordination
+
+A sanitized Part B coordination package has been added under `part-b/`.
+
+The current main candidate is a Mattermost Jira plugin authorization issue affecting subscription-template configuration tied to private channels. Raw technical evidence is intentionally kept outside this public/team repository pending tutor/coordinator guidance and responsible disclosure handling.
 
